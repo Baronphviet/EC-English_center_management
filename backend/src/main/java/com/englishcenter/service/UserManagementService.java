@@ -17,6 +17,10 @@ import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +32,7 @@ public class UserManagementService {
     private final ParentRepository parents;
     private final StudentParentRepository studentParents;
     private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
 
     public UserManagementService(
             UserRepository users,
@@ -35,13 +40,15 @@ public class UserManagementService {
             StudentRepository students,
             ParentRepository parents,
             StudentParentRepository studentParents,
-            EmailService emailService) {
+            EmailService emailService,
+            PasswordEncoder passwordEncoder) {
         this.users = users;
         this.teachers = teachers;
         this.students = students;
         this.parents = parents;
         this.studentParents = studentParents;
         this.emailService = emailService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public record TeacherRequest(
@@ -113,6 +120,7 @@ public class UserManagementService {
     }
 
     public Map<String, Object> getProfile(Long id) {
+        requireSelfOrAdmin(id);
         UserAccount user = users.findById(id).orElseThrow(() -> new NotFoundException("User not found: " + id));
         return switch (user.role) {
             case "TEACHER" -> withoutPassword(teacherMap(user));
@@ -313,10 +321,14 @@ public class UserManagementService {
         if (isBlank(request.password())) {
             throw new IllegalArgumentException("password is required");
         }
+        if (request.password().trim().length() < 6) {
+            throw new IllegalArgumentException("password must be at least 6 characters");
+        }
+        requireSelfOrAdmin(id);
         UserAccount user = users.findById(id).orElseThrow(() -> new NotFoundException("User not found: " + id));
-        user.passwordHash = request.password().trim();
+        user.passwordHash = passwordEncoder.encode(request.password().trim());
         users.save(user);
-        return baseMap(user);
+        return withoutPassword(baseMap(user));
     }
 
     private UserAccount createBaseUser(String username, String password, String fullName, String email, String phone,
@@ -329,7 +341,11 @@ public class UserManagementService {
         }
         UserAccount user = new UserAccount();
         user.username = username.trim();
-        user.passwordHash = isBlank(password) ? "ChangeMe123" : password;
+        String rawPassword = isBlank(password) ? "ChangeMe123" : password.trim();
+        if (rawPassword.length() < 6) {
+            throw new IllegalArgumentException("password must be at least 6 characters");
+        }
+        user.passwordHash = passwordEncoder.encode(rawPassword);
         user.fullName = fullName.trim();
         user.email = blankToNull(email);
         user.phone = blankToNull(phone);
@@ -337,7 +353,7 @@ public class UserManagementService {
         user.active = active == null || active;
         UserAccount saved = users.save(user);
         if (saved.email != null && !saved.email.trim().isEmpty()) {
-            sendAccountInfoEmail(saved, saved.passwordHash);
+            sendAccountInfoEmail(saved, rawPassword);
         }
         return saved;
     }
@@ -353,7 +369,10 @@ public class UserManagementService {
             user.active = active;
         }
         if (!isBlank(password)) {
-            user.passwordHash = password;
+            if (password.trim().length() < 6) {
+                throw new IllegalArgumentException("password must be at least 6 characters");
+            }
+            user.passwordHash = passwordEncoder.encode(password.trim());
         }
         users.save(user);
     }
@@ -447,7 +466,6 @@ public class UserManagementService {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", user.id);
         map.put("username", user.username);
-        map.put("password", user.passwordHash);
         map.put("fullName", user.fullName);
         map.put("email", user.email);
         map.put("phone", user.phone);
@@ -456,6 +474,21 @@ public class UserManagementService {
         map.put("createdAt", user.createdAt);
         map.put("updatedAt", user.updatedAt);
         return map;
+    }
+
+    private void requireSelfOrAdmin(Long id) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new AccessDeniedException("Access denied");
+        }
+        boolean admin = auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (admin) {
+            return;
+        }
+        if (auth.getName() == null || !auth.getName().equals(String.valueOf(id))) {
+            throw new AccessDeniedException("Access denied");
+        }
     }
 
     private boolean isBlank(String value) {

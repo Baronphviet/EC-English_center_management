@@ -12,7 +12,13 @@ function joinUrl(baseUrl, path) {
 export function getStoredAuth() {
   try {
     const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    if (typeof parsed.token !== "string" || !parsed.token) return null;
+    if (typeof parsed.role !== "string" || !parsed.role) return null;
+    if (parsed.id === undefined || parsed.id === null) return null;
+    return parsed;
   } catch {
     localStorage.removeItem(AUTH_STORAGE_KEY);
     return null;

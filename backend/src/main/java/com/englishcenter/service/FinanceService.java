@@ -23,6 +23,8 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -149,7 +151,24 @@ public class FinanceService {
     }
 
     public List<Map<String, Object>> listFees() {
-        return monthlyFees.findAllByOrderByYearDescMonthDesc().stream().map(this::feeMap).toList();
+        List<Map<String, Object>> all = monthlyFees.findAllByOrderByYearDescMonthDesc().stream().map(this::feeMap).toList();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || hasRole(auth, "ADMIN")) {
+            return all;
+        }
+        Long principalId = principalId(auth);
+        if (principalId == null) {
+            return all;
+        }
+        if (hasRole(auth, "PARENT")) {
+            java.util.Set<Long> studentIds = studentParents.findByIdParentId(principalId).stream()
+                    .map(link -> link.id.studentId).collect(java.util.stream.Collectors.toSet());
+            return all.stream().filter(fee -> fee.get("studentId") != null && studentIds.contains(((Number) fee.get("studentId")).longValue())).toList();
+        }
+        if (hasRole(auth, "STUDENT")) {
+            return all.stream().filter(fee -> fee.get("studentId") != null && principalId.equals(((Number) fee.get("studentId")).longValue())).toList();
+        }
+        return all;
     }
 
     @Transactional
@@ -188,9 +207,13 @@ public class FinanceService {
         if (request.amount() == null || request.amount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("amount must be greater than zero");
         }
-        Long receivedBy = request.receivedBy() == null ? 1L : request.receivedBy();
-        if (!users.existsById(receivedBy)) {
-            throw new NotFoundException("Receiver not found: " + receivedBy);
+        // Do not trust client-supplied audit identity: prefer the authenticated principal.
+        Long receivedBy = principalId(SecurityContextHolder.getContext().getAuthentication());
+        if (receivedBy == null || !users.existsById(receivedBy)) {
+            receivedBy = request.receivedBy() == null ? null : request.receivedBy();
+        }
+        if (receivedBy == null || !users.existsById(receivedBy)) {
+            throw new IllegalArgumentException("receivedBy must reference an existing user");
         }
 
         BigDecimal paidBefore = nullToZero(payments.sumPaidByFeeId(fee.id));
@@ -318,6 +341,21 @@ public class FinanceService {
 
     private BigDecimal nullToZero(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private boolean hasRole(Authentication auth, String role) {
+        return auth.getAuthorities().stream().anyMatch(a -> ("ROLE_" + role).equals(a.getAuthority()));
+    }
+
+    private Long principalId(Authentication auth) {
+        if (auth == null || auth.getName() == null) {
+            return null;
+        }
+        try {
+            return Long.valueOf(auth.getName());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private boolean isBlank(String value) {

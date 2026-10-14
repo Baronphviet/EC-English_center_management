@@ -24,8 +24,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: nphwa121@gmail.com
-    password: wzdmuqxerdlnuqco
+    username: ${MAIL_USERNAME:nphwa121@gmail.com}
+    password: ${MAIL_PASSWORD:changeme}
     properties:
       mail:
         smtp:
@@ -35,8 +35,13 @@ spring:
 
 app:
   mail:
-    from: nphwa121@gmail.com
+    from: ${MAIL_FROM:nphwa121@gmail.com}
     from-name: He-Thong-Quan-Ly-Trung-Tam-Tieng-Anh
+  jwt:
+    secret: ${JWT_SECRET:change-me-to-32-bytes-minimum-secret!!}
+    access-ttl-minutes: ${JWT_TTL_MINUTES:15}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
 
 logging:
   level:

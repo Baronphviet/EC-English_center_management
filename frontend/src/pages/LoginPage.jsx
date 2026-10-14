@@ -10,7 +10,7 @@ export default function LoginPage() {
   const { isAuthenticated, role, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [values, setValues] = useState({ username: "admin", password: "admin" });
+  const [values, setValues] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
@@ -152,8 +152,6 @@ export default function LoginPage() {
             {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
           </Button>
         </form>
-
-        <p className="muted">Mặc định demo: admin / admin</p>
       </section>
     </main>
   );

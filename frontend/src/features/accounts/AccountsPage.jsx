@@ -444,7 +444,7 @@ function AccountManageModal({ account, onClose, onRefresh, addNotification, stud
               id="newPassword"
               label="Mật khẩu mới"
               name="password"
-              type="text"
+              type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
@@ -597,24 +597,6 @@ export default function AccountsPage() {
   const columns = useMemo(() => [
     { key: "role", label: "Vai trò", render: (v) => <RoleBadge role={v} /> },
     { key: "username", label: "Tài khoản" },
-    {
-      key: "password", label: "Mật khẩu",
-      render: (v, row) => {
-        const badge = roleBadge[row.role]?.style || {};
-        return (
-          <code
-            className="credential-code"
-            style={{
-              color: badge.color || "var(--ink)",
-              background: badge.background || undefined,
-              border: badge.border || undefined
-            }}
-          >
-            {v || "-"}
-          </code>
-        );
-      }
-    },
     { key: "fullName", label: "Họ tên" },
     { key: "phone", label: "Điện thoại", render: (v) => v || "-" },
     {
@@ -650,7 +632,7 @@ export default function AccountsPage() {
     <main>
       <section className="hero compact-hero">
         <h1>Cấp tài khoản theo vai trò</h1>
-        <p className="lead">Admin xem tài khoản/mật khẩu, đổi mật khẩu và liên kết phụ huynh với học sinh.</p>
+        <p className="lead">Admin tạo tài khoản, đổi mật khẩu và liên kết phụ huynh với học sinh. Mật khẩu không hiển thị trong danh sách.</p>
       </section>
 
       {error && <Alert type="error" title="Cần kiểm tra" onClose={() => setError("")}>{error}</Alert>}
@@ -661,7 +643,7 @@ export default function AccountsPage() {
             <Select id="role" label="Vai trò" name="role" value={values.role} onChange={handleChange} options={roleOptions} />
             <div className="form-grid">
               <Input id="username" label="Tài khoản" name="username" value={values.username} onChange={handleChange} />
-              <Input id="password" label="Mật khẩu" name="password" type="text" value={values.password} onChange={handleChange} />
+              <Input id="password" label="Mật khẩu" name="password" type="password" value={values.password} onChange={handleChange} />
               <Input id="fullName" label="Họ tên" name="fullName" value={values.fullName} onChange={handleChange} />
               <Input id="phone" label="Điện thoại" name="phone" value={values.phone} onChange={handleChange} />
               <Input id="email" label="Email" name="email" type="email" value={values.email} onChange={handleChange} />
