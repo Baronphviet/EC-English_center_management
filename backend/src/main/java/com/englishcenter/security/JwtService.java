@@ -12,14 +12,19 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class JwtService {
+    // Published in earlier releases; never accept it again, even if explicitly configured.
+    private static final String LEGACY_DEFAULT_SECRET = "change-me-to-32-bytes-minimum-secret!!";
     private final SecretKey key;
     private final long accessTtlMillis;
 
     public JwtService(
-            @Value("${app.jwt.secret:change-me-to-32-bytes-minimum-secret!!}") String secret,
+            @Value("${app.jwt.secret:}") String secret,
             @Value("${app.jwt.access-ttl-minutes:15}") long accessTtlMinutes) {
-        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
-            throw new IllegalArgumentException("app.jwt.secret must be at least 32 bytes");
+        if (secret == null || secret.isBlank() || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalArgumentException("Set JWT_SECRET (app.jwt.secret) to a random secret of at least 32 bytes");
+        }
+        if (LEGACY_DEFAULT_SECRET.equals(secret.strip())) {
+            throw new IllegalArgumentException("JWT_SECRET (app.jwt.secret) must not use the published default secret");
         }
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessTtlMillis = accessTtlMinutes * 60_000L;

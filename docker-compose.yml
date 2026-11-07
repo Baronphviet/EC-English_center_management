@@ -29,6 +29,7 @@ services:
       DB_URL: jdbc:mysql://db:3306/english_center?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: root
       DB_PASSWORD: root
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to a random secret of at least 32 bytes}
       FLYWAY_ENABLED: "true"
     ports:
       - "8080:8080"

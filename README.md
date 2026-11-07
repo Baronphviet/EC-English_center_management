@@ -898,6 +898,19 @@ english-center/
 - Node.js 18+ (cho frontend)
 - Docker & Docker Compose (tuỳ chọn)
 
+### Khóa ký JWT bắt buộc
+
+Backend từ chối khởi động nếu `JWT_SECRET` thiếu, rỗng, chỉ có khoảng trắng,
+dưới 32 byte hoặc trùng khóa mặc định đã công khai trong phiên bản cũ.
+
+- **Docker Compose:** sao chép `.env.example` thành `.env`, chạy `openssl rand -hex 32`
+  và điền kết quả vào `JWT_SECRET` trong `.env`. Compose sẽ truyền biến này vào backend.
+- **Chạy backend thủ công:** export giá trị đã tạo, ví dụ `export JWT_SECRET='<khóa riêng đã tạo>'`,
+  trong terminal chạy Maven. Spring Boot không tự đọc file `.env`.
+- Giữ khóa ổn định giữa các lần khởi động, dùng cùng khóa cho các instance cùng môi trường;
+  không commit khóa thật. Nếu trước đây dùng khóa mặc định, thay bằng khóa mới rồi triển khai lại.
+  Token ký bằng khóa cũ sẽ không còn hợp lệ và người dùng cần đăng nhập lại.
+
 ### Cài đặt nhanh với Docker
 
 ```bash
@@ -997,6 +1010,7 @@ _README được tổng hợp từ đề tài "Xây dựng website quản lý tr
 ### 2) Chạy local (ưu tiên Docker)
 
 1. Chạy toàn bộ hệ thống:
+   Cấu hình `JWT_SECRET` trong `.env` theo mục **Khóa ký JWT bắt buộc** trước khi chạy.
    ```bash
    docker compose up --build
    ```
@@ -1110,7 +1124,7 @@ npm test
    - `DB_URL`
    - `DB_USERNAME`
    - `DB_PASSWORD`
-   - `JWT_SECRET` (khi tích hợp auth JWT)
+   - `JWT_SECRET` (bắt buộc, khóa ngẫu nhiên riêng tối thiểu 32 byte)
    - Các token tích hợp thông báo (nếu bật)
 
 3. Quy trình deploy:

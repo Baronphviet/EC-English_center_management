@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class JwtServiceTest {
     private JwtService service() {
@@ -38,6 +41,25 @@ class JwtServiceTest {
     @Test
     void shortSecretRejected() {
         assertThrows(IllegalArgumentException.class, () -> new JwtService("short", 15));
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {
+            "                                ",
+            "change-me-to-32-bytes-minimum-secret!!",
+            " change-me-to-32-bytes-minimum-secret!! "
+    })
+    void missingBlankOrPublishedSecretRejected(String secret) {
+        assertThrows(IllegalArgumentException.class, () -> new JwtService(secret, 15));
+    }
+
+    @Test
+    void secretMustMeet32ByteBoundary() {
+        String secret = "0123456789abcdef0123456789abcdef";
+        assertThrows(IllegalArgumentException.class, () -> new JwtService(secret.substring(1), 15));
+        JwtService jwt = new JwtService(secret, 15);
+        assertEquals("7", jwt.parse(jwt.generate(7L, "student", "STUDENT")).getSubject());
     }
 
     @Test

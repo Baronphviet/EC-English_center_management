@@ -38,7 +38,7 @@ app:
     from: ${MAIL_FROM:nphwa121@gmail.com}
     from-name: He-Thong-Quan-Ly-Trung-Tam-Tieng-Anh
   jwt:
-    secret: ${JWT_SECRET:change-me-to-32-bytes-minimum-secret!!}
+    secret: ${JWT_SECRET:}
     access-ttl-minutes: ${JWT_TTL_MINUTES:15}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
